@@ -1,0 +1,11 @@
+encryptionsalt: v1:XXXXXXXXXXXX:v1:XXXXXXXXXXXXXXXX:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+config:
+  aws:region: ap-northeast-1
+  instance-provisioning:vpcId: vpc-xxxxxxxxxxxxxxxxx
+  instance-provisioning:subnetId: subnet-xxxxxxxxxxxxxxxxx
+  instance-provisioning:securityGroupId: sg-xxxxxxxxxxxxxxxxx
+  instance-provisioning:instanceName: dev-instance
+  instance-provisioning:ami: ami-xxxxxxxxxxxxxxxxx
+  instance-provisioning:instanceType: t3.medium
+  instance-provisioning:sshKeyPairName: your-key-pair-name
+  instance-provisioning:volumeSize: "60"

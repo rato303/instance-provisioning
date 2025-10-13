@@ -12,7 +12,7 @@ echo "Creating log directory: $LOG_DIR"
 sudo mkdir -p "$LOG_DIR"
 
 # スクリプトの配置ディレクトリ
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="/opt/scripts"
 
 # ログ出力関数
 log_message() {
