@@ -19,7 +19,8 @@ if [[ ! -d "${KEY_DIR}" ]]; then
 fi
 
 # 鍵ファイルが存在するか確認
-if [[ ! -f "${KEY_DIR}/ansible_id_rsa" ]] && [[ ! -f "${KEY_DIR}/ansible_id_rsa.pub" ]]; then
+if [[ ! -f "${KEY_DIR}/ansible_id_ed25519" ]] && [[ ! -f "${KEY_DIR}/ansible_id_ed25519.pub" ]] && \
+   [[ ! -f "${KEY_DIR}/ansible_id_rsa" ]] && [[ ! -f "${KEY_DIR}/ansible_id_rsa.pub" ]]; then
     echo "${KEY_DIR} にSSH鍵が見つかりません"
     exit 0
 fi

@@ -67,6 +67,7 @@ const instance = new aws.ec2.Instance(instanceName, {
 // エクスポート
 export const instanceId = instance.id;
 export const publicIp = instance.publicIp;
+export const privateIp = instance.privateIp;
 export const publicDns = instance.publicDns;
 export const usedVpcId = vpcId;
 export const usedSubnetId = subnetId;

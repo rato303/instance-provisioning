@@ -7,9 +7,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # 鍵の保存先ディレクトリ
 KEY_DIR="${SCRIPT_DIR}/keys"
 # 秘密鍵のパス
-PRIVATE_KEY="${KEY_DIR}/ansible_id_rsa"
+PRIVATE_KEY="${KEY_DIR}/ansible_id_ed25519"
 # 公開鍵のパス
-PUBLIC_KEY="${KEY_DIR}/ansible_id_rsa.pub"
+PUBLIC_KEY="${KEY_DIR}/ansible_id_ed25519.pub"
 
 echo "=================================================="
 echo "  Ansible SSH鍵生成ツール"
@@ -37,7 +37,7 @@ KEY_COMMENT=${KEY_COMMENT:-ansible@provisioning}
 
 echo ""
 echo "SSH鍵ペアを生成中..."
-ssh-keygen -t rsa -b 4096 -C "${KEY_COMMENT}" -f "${PRIVATE_KEY}" -N ""
+ssh-keygen -t ed25519 -C "${KEY_COMMENT}" -f "${PRIVATE_KEY}" -N ""
 
 if [[ $? -eq 0 ]]; then
     echo ""

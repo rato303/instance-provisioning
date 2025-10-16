@@ -7,9 +7,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # 鍵の保存先ディレクトリ
 KEY_DIR="${SCRIPT_DIR}/keys"
 # 秘密鍵のパス
-PRIVATE_KEY="${KEY_DIR}/ansible_id_rsa"
+PRIVATE_KEY="${KEY_DIR}/ansible_id_ed25519"
 # 公開鍵のパス
-PUBLIC_KEY="${KEY_DIR}/ansible_id_rsa.pub"
+PUBLIC_KEY="${KEY_DIR}/ansible_id_ed25519.pub"
 
 # Secrets Managerのシークレット名（引数から取得、デフォルト値あり）
 SECRET_NAME="${1:-ansible/ssh-key}"
