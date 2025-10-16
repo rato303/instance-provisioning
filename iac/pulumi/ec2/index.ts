@@ -15,30 +15,25 @@ const instanceType = config.get("instanceType") || "t3.medium";
 const sshKeyPairName = config.get("sshKeyPairName") || "pulumi-dev";
 const volumeSize = config.getNumber("volumeSize") || 60;
 
-// シンプルなuser-data（スクリプトディレクトリの作成のみ）
-const userData = `#!/bin/bash
+// Ansible用SSH公開鍵の取得
+const ansibleSshKey = aws.secretsmanager.getSecretVersionOutput({
+    secretId: "ansible/ssh-key",
+});
+
+// JSON文字列から公開鍵を抽出
+const ansiblePublicKey = ansibleSshKey.secretString.apply((secretString) => {
+    const secret = JSON.parse(secretString);
+    return secret.public_key;
+});
+
+// user-data: Ansible用SSH公開鍵を登録
+const userData = pulumi.interpolate`#!/bin/bash
 set -e
 
-echo "========================================="
-echo "EC2 User Data - Preparing environment"
-echo "Started at: $(date)"
-echo "========================================="
-
-# スクリプト用ディレクトリの作成
-echo "Creating /opt/scripts directory..."
-sudo mkdir -p /opt/scripts
-sudo chown ubuntu:ubuntu /opt/scripts
-
-# ログディレクトリの作成
-echo "Creating /var/log/user-data directory..."
-sudo mkdir -p /var/log/user-data
-sudo chown ubuntu:ubuntu /var/log/user-data
-
-echo "========================================="
-echo "Environment preparation completed!"
-echo "Scripts should be transferred to /opt/scripts/"
-echo "Run /opt/scripts/user-data.sh to start installation"
-echo "========================================="
+# Ansible用SSH公開鍵を登録
+echo "${ansiblePublicKey}" >> /home/ubuntu/.ssh/authorized_keys
+chmod 600 /home/ubuntu/.ssh/authorized_keys
+chown ubuntu:ubuntu /home/ubuntu/.ssh/authorized_keys
 `;
 
 // Gitコミットハッシュの取得

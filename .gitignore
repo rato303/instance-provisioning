@@ -1,5 +1,5 @@
-/bin/
-/node_modules/
+bin/
+node_modules/
 
 # Pulumi stack configuration files (contain sensitive resource IDs)
 Pulumi.*.yaml

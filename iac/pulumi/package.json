@@ -1,6 +1,6 @@
 {
     "name": "instance-provisioning",
-    "main": "index.ts",
+    "main": "ec2/index.ts",
     "devDependencies": {
         "@types/node": "^18",
         "typescript": "^5.0.0"
