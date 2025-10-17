@@ -1,17 +1,16 @@
 # EC2 Instance Provisioning with Pulumi
 
-このプロジェクトは、Pulumiを使用してAWS EC2インスタンスを自動的にプロビジョニングし、開発環境を構築するためのツールです。
+このプロジェクトは、Pulumiを使用してAWS EC2インスタンスを自動的にプロビジョニングし、Ansibleを使用して開発環境を構築するためのツールです。
 
 ## 概要
 
-EC2インスタンス起動時に以下のソフトウェアを自動的にインストールします：
+EC2インスタンスを作成し、Ansibleを使用して以下のソフトウェアを自動的にインストールします：
 
-- nvm (Node Version Manager)
-- Node.js LTS版
-- Claude Code
-- AWS CLI v2
-- Pulumi
+- SDKMAN! (Java、Gradle、Mavenなどの管理)
 - Docker & Docker Compose
+- その他の開発ツール（Ansible playbookで管理）
+
+インスタンス作成時に、Ansible用のSSH公開鍵が自動的に登録され、Ansibleによる自動プロビジョニングが可能になります。
 
 ## 前提条件
 
@@ -156,19 +155,17 @@ pulumi destroy
 
 ```
 instance-provisioning/
-├── index.ts                    # Pulumi メイン設定ファイル
-├── scripts/
-│   ├── user-data.sh           # EC2起動時のメインスクリプト
-│   ├── 00-install-prerequisites.sh  # 前提条件インストール
-│   ├── 01-install-nvm.sh      # nvmインストール
-│   ├── 02-install-nodejs.sh   # Node.jsインストール
-│   ├── 03-install-claude.sh   # ClaudeCodeインストール
-│   ├── 04-install-awscli.sh   # AWS CLIインストール
-│   ├── 05-install-pulumi.sh   # Pulumiインストール
-│   └── 06-install-docker.sh   # Dockerインストール
-├── Pulumi.yaml                # Pulumiプロジェクト設定
-├── Pulumi.dev.yaml            # 環境固有設定（gitignore対象）
-├── Pulumi.dev.yaml.example    # 設定テンプレート
+├── iac/
+│   ├── ansible/               # Ansible playbook とロール
+│   │   ├── inventory/        # インベントリファイル
+│   │   ├── roles/            # 各種ロール (SDKMAN, Docker等)
+│   │   └── site.yml          # メインplaybook
+│   └── pulumi/
+│       └── ec2/
+│           ├── index.ts      # Pulumi メイン設定ファイル
+│           ├── Pulumi.yaml   # Pulumiプロジェクト設定
+│           ├── Pulumi.dev.yaml.example  # 設定テンプレート
+│           └── login-to-backend.sh      # Backend認証スクリプト
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -186,6 +183,7 @@ instance-provisioning/
 | `instanceType` | インスタンスタイプ | `t3.medium` | |
 | `sshKeyPairName` | SSH鍵ペア名 | `pulumi-dev` | |
 | `volumeSize` | EBSボリュームサイズ (GB) | `60` | |
+| `iamInstanceProfile` | IAMインスタンスプロファイル名 | `EC2WebAppDeveloper` | |
 
 ## 自動付与されるEC2タグ
 
@@ -215,27 +213,33 @@ Pulumiスタックからエクスポートされる値：
 
 - `instanceId`: EC2インスタンスID
 - `publicIp`: パブリックIPアドレス
+- `privateIp`: プライベートIPアドレス
 - `publicDns`: パブリックDNS名
 - `usedVpcId`: 使用されたVPC ID
 - `usedSubnetId`: 使用されたサブネット ID
 - `usedSecurityGroupId`: 使用されたセキュリティグループ ID
 - `provisioningRepositoryVersion`: プロビジョニングに使用されたGitコミットハッシュ
 
-## インストールログの確認
+## Ansibleによるプロビジョニング
 
-EC2インスタンス内で、各スクリプトの実行ログを確認できます：
+EC2インスタンス作成後、Ansibleを使用してソフトウェアをインストールします：
 
 ```bash
-# SSH接続後
-sudo cat /var/log/user-data/main.log                    # メインログ
-sudo cat /var/log/user-data/00-install-prerequisites.log
-sudo cat /var/log/user-data/01-install-nvm.log
-sudo cat /var/log/user-data/02-install-nodejs.log
-sudo cat /var/log/user-data/03-install-claude.log
-sudo cat /var/log/user-data/04-install-awscli.log
-sudo cat /var/log/user-data/05-install-pulumi.log
-sudo cat /var/log/user-data/06-install-docker.log
+# iac/ansibleディレクトリに移動
+cd iac/ansible
+
+# インベントリファイルを作成
+cp inventory/hosts.example inventory/hosts
+# inventory/hostsを編集してEC2インスタンスのIPアドレスとSSHキーを設定
+
+# SSH接続確認
+ansible -i inventory/hosts ec2 -m ping
+
+# プロビジョニング実行
+ansible-playbook -i inventory/hosts provision.yml
 ```
+
+詳細は [iac/ansible/README.md](iac/ansible/README.md) を参照してください。
 
 ## トラブルシューティング
 
@@ -269,19 +273,21 @@ aws configure
 pulumi stack output publicIp
 ```
 
-### user-dataスクリプトの実行状態確認
-
-```bash
-# EC2インスタンスにSSH接続後
-sudo tail -f /var/log/cloud-init-output.log
-```
-
 ## 注意事項
 
 - `Pulumi.dev.yaml` にはAWSリソースIDなどの情報が含まれるため、`.gitignore` で除外されています
 - このファイルは各環境で個別に作成・管理してください
-- EC2インスタンスの起動後、すべてのソフトウェアのインストールには10〜15分程度かかります
+- EC2インスタンス作成時にAnsible用のSSH公開鍵が自動的に登録されます（AWS Secrets Managerから取得）
+- Ansibleによるソフトウェアのインストールには10〜15分程度かかります
 - インスタンスを削除（`pulumi destroy`）すると、データは完全に失われます（`deleteOnTermination: true`）
+
+## AWS Secrets Manager
+
+Ansible用のSSH鍵はAWS Secrets Managerで管理されています：
+
+- シークレット名: `ansible/ssh-key`
+- 必要な権限: インスタンスに割り当てるIAMロールに `secretsmanager:GetSecretValue` 権限が必要
+- 鍵の登録については [iac/ansible/roles/ssh_key_management/README.md](iac/ansible/roles/ssh_key_management/README.md) を参照
 
 ## ライセンス
 
