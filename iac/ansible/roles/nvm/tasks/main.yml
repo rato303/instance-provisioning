@@ -1,0 +1,99 @@
+---
+- name: Install dependencies for nvm
+  apt:
+    name:
+      - curl
+      - git
+    state: present
+    update_cache: yes
+
+- name: Check if nvm is already installed
+  stat:
+    path: "{{ nvm_dir }}/nvm.sh"
+  register: nvm_installed
+  become: no
+
+- name: Install nvm
+  shell: >
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+  args:
+    creates: "{{ nvm_dir }}/nvm.sh"
+  become: no
+  when: not nvm_installed.stat.exists
+
+- name: Add nvm to bash profile
+  lineinfile:
+    path: "{{ home_dir }}/.bashrc"
+    line: "{{ item }}"
+    create: yes
+  loop:
+    - 'export NVM_DIR="$HOME/.nvm"'
+    - '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"'
+    - '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"'
+  become: no
+
+- name: Verify nvm installation
+  shell: |
+    . {{ nvm_dir }}/nvm.sh && nvm --version
+  args:
+    executable: /bin/bash
+  register: nvm_version
+  changed_when: false
+  become: no
+
+- name: Display nvm version
+  debug:
+    msg: "nvm version: {{ nvm_version.stdout }}"
+
+- name: Install Node.js versions using nvm
+  shell: |
+    . {{ nvm_dir }}/nvm.sh && nvm install {{ '--lts' if item.version == 'lts' else item.version }}
+  args:
+    executable: /bin/bash
+  loop: "{{ nvm_node_versions }}"
+  register: nvm_install_result
+  changed_when: "'is already installed' not in nvm_install_result.stderr"
+  become: no
+
+- name: Set default Node.js version
+  shell: |
+    . {{ nvm_dir }}/nvm.sh && nvm alias default {{ 'lts/*' if nvm_default_version == 'lts' else nvm_default_version }}
+  args:
+    executable: /bin/bash
+  become: no
+  changed_when: false
+
+- name: Install global npm packages
+  shell: |
+    . {{ nvm_dir }}/nvm.sh && npm install -g {{ item }}
+  args:
+    executable: /bin/bash
+  loop: "{{ nvm_global_packages }}"
+  when: nvm_install_packages and nvm_global_packages | length > 0
+  become: no
+
+- name: Verify Node.js installation
+  shell: |
+    . {{ nvm_dir }}/nvm.sh && node --version
+  args:
+    executable: /bin/bash
+  register: nodejs_version
+  changed_when: false
+  become: no
+
+- name: Display Node.js version
+  debug:
+    msg: "Node.js version: {{ nodejs_version.stdout }}"
+
+- name: Verify npm installation
+  shell: |
+    . {{ nvm_dir }}/nvm.sh && npm --version
+  args:
+    executable: /bin/bash
+  register: npm_version
+  changed_when: false
+  become: no
+
+- name: Display npm version
+  debug:
+    msg: "npm version: {{ npm_version.stdout }}"

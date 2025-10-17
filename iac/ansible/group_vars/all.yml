@@ -1,0 +1,41 @@
+---
+# 共通変数定義ファイル
+
+# ユーザー設定
+ansible_user: ubuntu
+home_dir: "/home/{{ ansible_user }}"
+
+# パス設定
+nvm_dir: "{{ home_dir }}/.nvm"
+
+# NVM関連
+# インストールするNode.jsのバージョンリスト
+nvm_node_versions:
+  - version: "lts"  # LTS版をインストール
+  # 他のバージョンを追加する場合:
+  # - version: "18"
+  # - version: "20.10.0"
+
+nvm_default_version: "lts"  # デフォルトで使用するバージョン
+
+# グローバルにインストールするnpmパッケージ
+nvm_global_packages:
+  - "@anthropic-ai/claude-code"  # Claude Code CLI
+  # 他のパッケージを追加する場合:
+  # - "typescript"
+  # - "yarn"
+
+# SDKMAN関連
+# インストールするSDKをカスタマイズする場合は上書き可能
+# 注意: kotlinとgradleはJVM上で動作するため、javaが必須
+sdkman_sdks:
+  - name: java  # KotlinとGradleの実行に必要
+  - name: kotlin
+  - name: gradle
+  # 他のSDKを追加する場合:
+  # - name: java
+  #   version: "17.0.8-tem"  # 特定バージョンを指定する場合
+  # - name: maven
+  # - name: scala
+
+sdkman_set_default: true

@@ -1,0 +1,16 @@
+---
+- name: Install make
+  apt:
+    name:
+      - make
+    state: present
+    update_cache: yes
+
+- name: Verify make installation
+  command: make --version
+  register: make_version
+  changed_when: false
+
+- name: Display make version
+  debug:
+    msg: "{{ make_version.stdout_lines[0] }}"

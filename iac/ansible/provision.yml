@@ -1,0 +1,12 @@
+---
+- name: Setup development environment
+  hosts: all
+  become: yes
+  roles:
+    - awscli
+    - make
+    - docker
+    - ansible
+    - pulumi
+    - nvm
+    - sdkman

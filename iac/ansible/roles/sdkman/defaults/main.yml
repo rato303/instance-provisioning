@@ -1,0 +1,12 @@
+---
+# SDKMANでインストールするSDKのリスト
+# 各SDKは name と version (optional) を指定可能
+# version を省略すると最新版がインストールされる
+# 注意: kotlinとgradleはJVM上で動作するため、javaが必須
+sdkman_sdks:
+  - name: java  # KotlinとGradleの実行に必要
+  - name: kotlin
+  - name: gradle
+
+# 自動的にデフォルトバージョンとして設定するか
+sdkman_set_default: true

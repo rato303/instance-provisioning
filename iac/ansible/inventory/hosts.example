@@ -1,0 +1,23 @@
+# Ansible Inventory Example
+# Pulumiで生成したEC2インスタンスのIPアドレスを指定してください
+
+[ec2]
+# EC2インスタンスのパブリックIPまたはプライベートIPを記載
+# 例: 54.123.45.67
+YOUR_EC2_PUBLIC_IP
+
+# 複数のホストを追加する場合:
+# 54.123.45.68
+# 54.123.45.69
+
+[ec2:vars]
+# 共通設定
+ansible_user=ubuntu
+ansible_ssh_private_key_file=~/.ssh/your-key.pem
+ansible_python_interpreter=/usr/bin/python3
+
+# SSHポートを変更する場合（デフォルト: 22）
+# ansible_port=22
+
+# SSH接続タイムアウト設定（秒）
+# ansible_ssh_common_args='-o ConnectTimeout=30'

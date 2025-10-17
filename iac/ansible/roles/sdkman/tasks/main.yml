@@ -1,0 +1,102 @@
+---
+- name: Install dependencies for SDKMAN
+  apt:
+    name:
+      - curl
+      - zip
+      - unzip
+    state: present
+    update_cache: yes
+
+- name: Check if SDKMAN is already installed
+  stat:
+    path: "{{ home_dir }}/.sdkman/bin/sdkman-init.sh"
+  register: sdkman_installed
+  become: no
+
+- name: Install SDKMAN
+  shell: |
+    curl -s "https://get.sdkman.io" | bash
+  args:
+    creates: "{{ home_dir }}/.sdkman/bin/sdkman-init.sh"
+  become: no
+  when: not sdkman_installed.stat.exists
+
+- name: Add SDKMAN to bash profile
+  lineinfile:
+    path: "{{ home_dir }}/.bashrc"
+    line: "{{ item }}"
+    create: yes
+  loop:
+    - 'export SDKMAN_DIR="$HOME/.sdkman"'
+    - '[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"'
+  become: no
+
+- name: Verify SDKMAN installation
+  shell: |
+    source {{ home_dir }}/.sdkman/bin/sdkman-init.sh && sdk version
+  args:
+    executable: /bin/bash
+  register: sdkman_version
+  changed_when: false
+  become: no
+
+- name: Display SDKMAN version
+  debug:
+    msg: "SDKMAN version: {{ sdkman_version.stdout }}"
+
+- name: Check if SDK is already installed
+  shell: |
+    source {{ home_dir }}/.sdkman/bin/sdkman-init.sh && sdk current {{ item.name }}
+  args:
+    executable: /bin/bash
+  loop: "{{ sdkman_sdks }}"
+  register: sdk_check
+  ignore_errors: yes
+  changed_when: false
+  become: no
+
+- name: Install SDKs via SDKMAN
+  shell: |
+    source {{ home_dir }}/.sdkman/bin/sdkman-init.sh && sdk install {{ item.item.name }} {{ item.item.version | default('') }}
+  args:
+    executable: /bin/bash
+  loop: "{{ sdk_check.results }}"
+  when: item.rc != 0 or "Not using" in item.stdout
+  become: no
+
+- name: Get installed SDK versions for setting default
+  shell: |
+    source {{ home_dir }}/.sdkman/bin/sdkman-init.sh && sdk current {{ item.name }} | grep -oP '(?<=version )\S+'
+  args:
+    executable: /bin/bash
+  loop: "{{ sdkman_sdks }}"
+  register: sdk_current_versions
+  changed_when: false
+  become: no
+  when: sdkman_set_default
+
+- name: Set SDK as default
+  shell: |
+    source {{ home_dir }}/.sdkman/bin/sdkman-init.sh && sdk default {{ item.item.name }} {{ item.stdout }}
+  args:
+    executable: /bin/bash
+  loop: "{{ sdk_current_versions.results }}"
+  when: sdkman_set_default and not item.skipped | default(false)
+  become: no
+  changed_when: false
+
+- name: Verify installed SDKs
+  shell: |
+    source {{ home_dir }}/.sdkman/bin/sdkman-init.sh && sdk current {{ item.name }}
+  args:
+    executable: /bin/bash
+  loop: "{{ sdkman_sdks }}"
+  register: sdk_versions
+  changed_when: false
+  become: no
+
+- name: Display installed SDK versions
+  debug:
+    msg: "{{ item.item.name }}: {{ item.stdout }}"
+  loop: "{{ sdk_versions.results }}"

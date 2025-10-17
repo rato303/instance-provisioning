@@ -1,0 +1,15 @@
+---
+# nvmでインストールするNode.jsのバージョンリスト
+# 各バージョンは version を指定可能
+# "lts" で最新のLTS版をインストール
+nvm_node_versions:
+  - version: "lts"
+
+# デフォルトで使用するバージョン
+nvm_default_version: "lts"
+
+# インストール後にnpmパッケージをグローバルインストールするか
+nvm_install_packages: true
+
+# グローバルインストールするnpmパッケージのリスト
+nvm_global_packages: []

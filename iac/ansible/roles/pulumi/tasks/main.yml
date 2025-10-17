@@ -1,0 +1,40 @@
+---
+- name: Install dependencies for Pulumi
+  apt:
+    name:
+      - curl
+    state: present
+    update_cache: yes
+
+- name: Check if Pulumi is already installed
+  stat:
+    path: "{{ home_dir }}/.pulumi/bin/pulumi"
+  register: pulumi_check
+  become: no
+
+- name: Download and install Pulumi
+  shell: curl -fsSL https://get.pulumi.com | sh
+  args:
+    creates: "{{ home_dir }}/.pulumi/bin/pulumi"
+  when: not pulumi_check.stat.exists
+  become: no
+
+- name: Add Pulumi to PATH in .bashrc
+  lineinfile:
+    path: "{{ home_dir }}/.bashrc"
+    line: 'export PATH=$PATH:$HOME/.pulumi/bin'
+    create: yes
+  become: no
+
+- name: Verify Pulumi installation
+  shell: |
+    export PATH=$PATH:{{ home_dir }}/.pulumi/bin && pulumi version
+  args:
+    executable: /bin/bash
+  register: pulumi_version
+  changed_when: false
+  become: no
+
+- name: Display Pulumi version
+  debug:
+    msg: "Pulumi version: {{ pulumi_version.stdout }}"

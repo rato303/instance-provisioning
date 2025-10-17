@@ -1,0 +1,5 @@
+# 実際のhostsファイルはgit管理外にする（IPアドレスや秘密鍵のパスが含まれるため）
+hosts
+hosts.ini
+*.ini
+!hosts.example
