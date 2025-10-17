@@ -1,0 +1,20 @@
+---
+# Ansible SSH鍵をSecrets Managerから取得して配置するためのデフォルト設定
+
+# AWS Secrets Managerのシークレット名
+ansible_ssh_key_secret_name: "ansible/ssh-key"
+
+# AWS リージョン
+ansible_ssh_key_region: "ap-northeast-1"
+
+# 秘密鍵の配置先パス
+ansible_ssh_key_private_path: "{{ ansible_env.HOME }}/.ssh/ansible_id_ed25519"
+
+# 公開鍵の配置先パス
+ansible_ssh_key_public_path: "{{ ansible_env.HOME }}/.ssh/ansible_id_ed25519.pub"
+
+# 秘密鍵のパーミッション
+ansible_ssh_key_private_mode: "0600"
+
+# 公開鍵のパーミッション
+ansible_ssh_key_public_mode: "0644"

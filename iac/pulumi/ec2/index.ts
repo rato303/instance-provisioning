@@ -14,6 +14,7 @@ const ami = config.get("ami") || "ami-0a71a0b9c988d5e5e";
 const instanceType = config.get("instanceType") || "t3.medium";
 const sshKeyPairName = config.get("sshKeyPairName") || "pulumi-dev";
 const volumeSize = config.getNumber("volumeSize") || 60;
+const iamInstanceProfile = config.get("iamInstanceProfile") || "EC2WebAppDeveloper";
 
 // Ansible用SSH公開鍵の取得
 const ansibleSshKey = aws.secretsmanager.getSecretVersionOutput({
@@ -51,6 +52,7 @@ const instance = new aws.ec2.Instance(instanceName, {
     keyName: sshKeyPairName,
     subnetId: subnetId,
     vpcSecurityGroupIds: [securityGroupId],
+    iamInstanceProfile: iamInstanceProfile,
     userData: userData,
     rootBlockDevice: {
         volumeSize: volumeSize,

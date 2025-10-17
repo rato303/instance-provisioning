@@ -8,9 +8,9 @@
     update_cache: yes
 
 - name: Check if AWS CLI is already installed
-  command: aws --version
+  command: which aws
   register: awscli_check
-  ignore_errors: yes
+  failed_when: false
   changed_when: false
 
 - name: Download AWS CLI installer

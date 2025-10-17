@@ -10,3 +10,4 @@
     - pulumi
     - nvm
     - sdkman
+    - ansible-ssh-key
