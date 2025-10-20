@@ -14,7 +14,16 @@ const ami = config.get("ami") || "ami-0a71a0b9c988d5e5e";
 const instanceType = config.get("instanceType") || "t3.medium";
 const sshKeyPairName = config.get("sshKeyPairName") || "pulumi-dev";
 const volumeSize = config.getNumber("volumeSize") || 60;
-const iamInstanceProfile = config.get("iamInstanceProfile") || "EC2WebAppDeveloper";
+
+// ロール選択ロジック
+const roleType = config.get("instanceRoleType") || "basic";
+
+// 既存のiamInstanceProfileパラメータとの互換性
+// ISSUE_03仕様: IAMロール名を直接指定（インスタンスプロファイル名はロール名と同じ）
+const explicitProfile = config.get("iamInstanceProfile");
+const instanceProfile = explicitProfile
+    ? explicitProfile
+    : (roleType === "super" ? "WebSuperDeveloper" : "WebBasicDeveloper");
 
 // Gitコミットハッシュの取得
 let gitCommitHash = "unknown";
@@ -31,7 +40,7 @@ const instance = new aws.ec2.Instance(instanceName, {
     keyName: sshKeyPairName,
     subnetId: subnetId,
     vpcSecurityGroupIds: [securityGroupId],
-    iamInstanceProfile: iamInstanceProfile,
+    iamInstanceProfile: instanceProfile,
     rootBlockDevice: {
         volumeSize: volumeSize,
         volumeType: "gp3",
@@ -41,6 +50,9 @@ const instance = new aws.ec2.Instance(instanceName, {
         Name: instanceName,
         ProvisioningRepositoryVersion: gitCommitHash,
         ProvisionedBy: "instance-provisioning",
+        Role: roleType === "super" ? "WebSuperDeveloper" : "WebBasicDeveloper",
+        SSMEnabled: roleType === "super" ? "true" : "false",
+        SSMManaged: "true",
     },
 });
 
