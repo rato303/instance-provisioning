@@ -1,0 +1,3 @@
+name: iam-roles
+runtime: nodejs
+description: IAM Roles and Policies for EC2 instances

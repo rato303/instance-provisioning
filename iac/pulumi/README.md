@@ -2,6 +2,36 @@
 
 このディレクトリには、AWSリソースをPulumiでプロビジョニングするためのコードが含まれています。
 
+## ディレクトリ構成
+
+```
+iac/pulumi/
+├── Makefile                # 共通Makefile（IAM/EC2両方で使用）
+├── login-to-backend.sh     # Pulumiバックエンドログインスクリプト
+├── iam/                    # IAMロールとポリシー
+└── ec2/                    # EC2インスタンス
+```
+
+## ⚠️ 重要: スタック命名規則
+
+**各プロジェクトで使用するスタック名が異なります：**
+
+| プロジェクト | スタック名 | 理由 |
+|------------|-----------|------|
+| **iam/** | `main` | IAMロールは環境共通で全インスタンスで共有されるため |
+| **ec2/** | `dev`, `prod`, `dev6`, `dev7` など | 環境やインスタンスごとに異なるため |
+
+### 例
+
+```bash
+# IAMリソースのデプロイ（スタック名: main）
+make up DIR=iam STACK=main
+
+# EC2インスタンスのデプロイ（スタック名: dev, prod等）
+make up DIR=ec2 STACK=dev
+make up DIR=ec2 STACK=prod
+```
+
 ## 前提条件
 
 - Node.js 18以上

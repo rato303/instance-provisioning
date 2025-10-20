@@ -9,3 +9,7 @@ config:
   instance-provisioning:instanceType: t3.medium
   instance-provisioning:sshKeyPairName: your-key-pair-name
   instance-provisioning:volumeSize: "60"
+  # IAMロールタイプ: "basic" (WebBasicDeveloper) または "super" (WebSuperDeveloper)
+  instance-provisioning:instanceRoleType: basic
+  # 既存のiamInstanceProfileを指定する場合（オプション、instanceRoleTypeより優先）
+  # instance-provisioning:iamInstanceProfile: WebBasicDeveloper
