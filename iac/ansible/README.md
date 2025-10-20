@@ -38,6 +38,17 @@ ansible/
 
 ## 使用方法
 
+### 前提条件: Session Manager接続
+
+このplaybookは、AWS Systems Manager Session Manager経由で実行します。プロビジョニング専用インスタンス（WebSuperDeveloper）から実行することを想定しています。
+
+**必要な準備**:
+1. Ansibleコレクション `amazon.aws` がインストールされていること
+   ```bash
+   ansible-galaxy collection install amazon.aws
+   ```
+2. プロビジョニング専用インスタンスに適切なIAM権限があること（WebSuperDeveloperロール）
+
 ### 1. インベントリファイルのセットアップ
 
 PulumiでプロビジョニングしたEC2インスタンスに対して実行するため、インベントリファイルを作成します:
@@ -47,22 +58,22 @@ cd iac/ansible
 cp inventory/hosts.example inventory/hosts
 ```
 
-`inventory/hosts` を編集してEC2インスタンスのIPアドレスとSSHキーを設定:
+`inventory/hosts` を編集してターゲットEC2インスタンスのIDを設定:
 
 ```ini
-[ec2]
-54.123.45.67
+[targets]
+i-0123456789abcdef0  # pulumi stack output instanceIdで取得
 
-[ec2:vars]
-ansible_user=ubuntu
-ansible_ssh_private_key_file=~/.ssh/your-key.pem
+[targets:vars]
+ansible_connection=aws_ssm
+ansible_aws_ssm_region=ap-northeast-1
 ansible_python_interpreter=/usr/bin/python3
 ```
 
-### 2. SSH接続確認
+### 2. Session Manager接続確認
 
 ```bash
-ansible -i inventory/hosts ec2 -m ping
+ansible -i inventory/hosts targets -m ping
 ```
 
 ### 3. プロビジョニング実行
@@ -91,10 +102,17 @@ ansible-playbook -i localhost, -c local provision.yml
 
 ## 前提条件
 
+### ターゲットインスタンス
 - Ubuntu 20.04以降
 - Python 3.x
-- Ansible 2.9以降
+- SSM Agentが起動していること（Amazon Linux/Ubuntu AMIではデフォルトで含まれる）
+- IAMロールに `AmazonSSMManagedInstanceCore` ポリシーがアタッチされていること
 - sudo権限
+
+### プロビジョニング専用インスタンス（実行元）
+- Ansible 2.9以降
+- `amazon.aws` Ansibleコレクション
+- WebSuperDeveloperロール（Session Manager経由で他インスタンスに接続可能）
 
 ## カスタマイズ
 
