@@ -4,13 +4,13 @@
 
 ## 概要
 
-EC2インスタンスを作成し、Ansibleを使用して以下のソフトウェアを自動的にインストールします：
+EC2インスタンスを作成し、AWS Systems Manager Session Manager経由でAnsibleを使用して以下のソフトウェアを自動的にインストールします：
 
 - SDKMAN! (Java、Gradle、Mavenなどの管理)
 - Docker & Docker Compose
 - その他の開発ツール（Ansible playbookで管理）
 
-インスタンス作成時に、Ansible用のSSH公開鍵が自動的に登録され、Ansibleによる自動プロビジョニングが可能になります。
+Session Managerを使用することで、SSH鍵の管理が不要になり、IAMベースの認証とタグベースのアクセス制御により、セキュアな運用が可能です。
 
 ## 前提条件
 
@@ -138,11 +138,14 @@ pulumi stack output publicIp
 pulumi stack output instanceId
 ```
 
-### SSH接続
+### Session Manager接続
 
 ```bash
-# Public IPを取得して接続
-ssh -i /path/to/your-key.pem ubuntu@$(pulumi stack output publicIp)
+# インスタンスIDを取得
+INSTANCE_ID=$(pulumi stack output instanceId)
+
+# Session Manager経由で接続
+aws ssm start-session --target $INSTANCE_ID
 ```
 
 ### インスタンスの削除
@@ -222,20 +225,25 @@ Pulumiスタックからエクスポートされる値：
 
 ## Ansibleによるプロビジョニング
 
-EC2インスタンス作成後、Ansibleを使用してソフトウェアをインストールします：
+Session Manager経由でAnsibleを使用してソフトウェアをインストールします：
+
+### プロビジョニング専用インスタンス（WebSuperDeveloper）からの実行
 
 ```bash
-# iac/ansibleディレクトリに移動
-cd iac/ansible
+# 1. プロビジョニング専用インスタンスにSession Manager経由で接続
+aws ssm start-session --target $(pulumi stack output instanceId)
 
-# インベントリファイルを作成
+# 2. cloneしたリポジトリのansibleディレクトリに移動
+cd <cloneしたディレクトリ>/iac/ansible
+
+# 3. インベントリファイルを作成
 cp inventory/hosts.example inventory/hosts
-# inventory/hostsを編集してEC2インスタンスのIPアドレスとSSHキーを設定
+# inventory/hostsを編集してターゲットEC2インスタンスのIDを設定
 
-# SSH接続確認
-ansible -i inventory/hosts ec2 -m ping
+# 4. Session Manager接続確認
+ansible -i inventory/hosts targets -m ping
 
-# プロビジョニング実行
+# 5. プロビジョニング実行
 ansible-playbook -i inventory/hosts provision.yml
 ```
 
@@ -263,31 +271,42 @@ aws sts get-caller-identity
 aws configure
 ```
 
-### インスタンスへの接続エラー
+### Session Manager接続エラー
 
-- セキュリティグループでSSH（ポート22）が許可されているか確認
-- 正しい鍵ペアを使用しているか確認
-- Public IPが割り当てられているか確認
+**症状**: `aws ssm start-session` が失敗する
+
+**確認事項**:
+1. インスタンスにSSM Agentが起動しているか
+2. IAMロールに `AmazonSSMManagedInstanceCore` ポリシーがアタッチされているか
+3. インスタンスに `SSMManaged: true` タグが付与されているか
 
 ```bash
-pulumi stack output publicIp
+# インスタンスIDの確認
+pulumi stack output instanceId
+
+# タグの確認
+aws ec2 describe-tags --filters "Name=resource-id,Values=$(pulumi stack output instanceId)"
 ```
+
+### Ansible接続エラー
+
+**症状**: `ansible -i inventory/hosts targets -m ping` が失敗する
+
+**確認事項**:
+1. `amazon.aws` Ansibleコレクションがインストールされているか
+   ```bash
+   ansible-galaxy collection install amazon.aws
+   ```
+2. inventory/hostsに正しいインスタンスIDが設定されているか
+3. `ansible_connection=aws_ssm` が設定されているか
 
 ## 注意事項
 
 - `Pulumi.dev.yaml` にはAWSリソースIDなどの情報が含まれるため、`.gitignore` で除外されています
 - このファイルは各環境で個別に作成・管理してください
-- EC2インスタンス作成時にAnsible用のSSH公開鍵が自動的に登録されます（AWS Secrets Managerから取得）
+- Session Manager経由でのプロビジョニングにはIAMベースの認証を使用します（SSH鍵管理は不要）
 - Ansibleによるソフトウェアのインストールには10〜15分程度かかります
 - インスタンスを削除（`pulumi destroy`）すると、データは完全に失われます（`deleteOnTermination: true`）
-
-## AWS Secrets Manager
-
-Ansible用のSSH鍵はAWS Secrets Managerで管理されています：
-
-- シークレット名: `ansible/ssh-key`
-- 必要な権限: インスタンスに割り当てるIAMロールに `secretsmanager:GetSecretValue` 権限が必要
-- 鍵の登録については [iac/ansible/roles/ssh_key_management/README.md](iac/ansible/roles/ssh_key_management/README.md) を参照
 
 ## ライセンス
 

@@ -1,8 +1,0 @@
-# SSH Keys - Never commit these to git!
-keys/
-*.pem
-*.key
-*_rsa
-*_rsa.pub
-*_id_rsa
-*_id_rsa.pub

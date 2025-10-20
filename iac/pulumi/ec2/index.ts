@@ -16,27 +16,6 @@ const sshKeyPairName = config.get("sshKeyPairName") || "pulumi-dev";
 const volumeSize = config.getNumber("volumeSize") || 60;
 const iamInstanceProfile = config.get("iamInstanceProfile") || "EC2WebAppDeveloper";
 
-// Ansible用SSH公開鍵の取得
-const ansibleSshKey = aws.secretsmanager.getSecretVersionOutput({
-    secretId: "ansible/ssh-key",
-});
-
-// JSON文字列から公開鍵を抽出
-const ansiblePublicKey = ansibleSshKey.secretString.apply((secretString) => {
-    const secret = JSON.parse(secretString);
-    return secret.public_key;
-});
-
-// user-data: Ansible用SSH公開鍵を登録
-const userData = pulumi.interpolate`#!/bin/bash
-set -e
-
-# Ansible用SSH公開鍵を登録
-echo "${ansiblePublicKey}" >> /home/ubuntu/.ssh/authorized_keys
-chmod 600 /home/ubuntu/.ssh/authorized_keys
-chown ubuntu:ubuntu /home/ubuntu/.ssh/authorized_keys
-`;
-
 // Gitコミットハッシュの取得
 let gitCommitHash = "unknown";
 try {
@@ -53,7 +32,6 @@ const instance = new aws.ec2.Instance(instanceName, {
     subnetId: subnetId,
     vpcSecurityGroupIds: [securityGroupId],
     iamInstanceProfile: iamInstanceProfile,
-    userData: userData,
     rootBlockDevice: {
         volumeSize: volumeSize,
         volumeType: "gp3",

@@ -53,22 +53,7 @@ EC2インスタンスに割り当てるIAMロール（例: `EC2WebAppDeveloper`�
 }
 ```
 
-### 3. Secrets Manager（SSH鍵管理用）
-
-```json
-{
-    "Effect": "Allow",
-    "Action": [
-        "secretsmanager:GetSecretValue",
-        "secretsmanager:DescribeSecret"
-    ],
-    "Resource": [
-        "arn:aws:secretsmanager:*:*:secret:ansible/ssh-key*"
-    ]
-}
-```
-
-### 4. EC2（インスタンス管理用）
+### 3. EC2（インスタンス管理用）
 
 既存の権限に加えて、以下が必要です：
 
@@ -91,6 +76,28 @@ EC2インスタンスに割り当てるIAMロール（例: `EC2WebAppDeveloper`�
     "Resource": "*"
 }
 ```
+
+### 4. IAM（インスタンスプロファイル管理用）
+
+インスタンス作成時にIAMロールを割り当てるため、以下の権限が必要です：
+
+```json
+{
+    "Effect": "Allow",
+    "Action": [
+        "iam:GetRole",
+        "iam:GetInstanceProfile",
+        "iam:PassRole"
+    ],
+    "Resource": [
+        "arn:aws:iam::*:role/WebBasicDeveloper",
+        "arn:aws:iam::*:role/WebSuperDeveloper",
+        "arn:aws:iam::*:instance-profile/*"
+    ]
+}
+```
+
+**注意**: Session Manager経由でのプロビジョニングを行う場合、WebSuperDeveloperロールを持つインスタンスから実行する必要があります。
 
 ## 初期セットアップ
 
@@ -173,7 +180,6 @@ iac/pulumi/
 │   └── index.ts               # EC2リソース定義
 └── tools/                      # ツール群
     └── maintenance/
-        ├── ansible-ssh-key/   # Ansible SSH鍵管理ツール
         └── pulumi-backend/    # Pulumiバックエンド設定管理
             ├── Makefile
             ├── README.md

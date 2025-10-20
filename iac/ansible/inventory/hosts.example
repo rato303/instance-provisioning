@@ -1,23 +1,19 @@
-# Ansible Inventory Example
-# Pulumiで生成したEC2インスタンスのIPアドレスを指定してください
+# Ansible Inventory Example for Session Manager
+# PulumiでプロビジョニングしたEC2インスタンスのIDを指定してください
 
-[ec2]
-# EC2インスタンスのパブリックIPまたはプライベートIPを記載
-# 例: 54.123.45.67
-YOUR_EC2_PUBLIC_IP
+[targets]
+# EC2インスタンスID（pulumi stack output instanceIdで取得）
+# 例: i-0123456789abcdef0
+YOUR_EC2_INSTANCE_ID
 
 # 複数のホストを追加する場合:
-# 54.123.45.68
-# 54.123.45.69
+# i-0123456789abcdef1
+# i-0123456789abcdef2
 
-[ec2:vars]
-# 共通設定
-ansible_user=ubuntu
-ansible_ssh_private_key_file=~/.ssh/your-key.pem
+[targets:vars]
+# Session Manager接続設定
+ansible_connection=aws_ssm
+ansible_aws_ssm_region=ap-northeast-1
 ansible_python_interpreter=/usr/bin/python3
 
-# SSHポートを変更する場合（デフォルト: 22）
-# ansible_port=22
-
-# SSH接続タイムアウト設定（秒）
-# ansible_ssh_common_args='-o ConnectTimeout=30'
+# SSHポート転送などの設定は不要（Session Manager経由）
