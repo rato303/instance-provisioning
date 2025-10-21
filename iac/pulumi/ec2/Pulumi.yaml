@@ -1,5 +1,5 @@
-name: instance-provisioning
-description: A minimal AWS TypeScript Pulumi program
+name: ec2-resources
+description: EC2 instance provisioning with Pulumi
 runtime:
   name: nodejs
   options:

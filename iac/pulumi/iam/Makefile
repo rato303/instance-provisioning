@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 
 # Pulumiスタック名（環境変数で上書き可能）
-STACK ?= dev
+STACK ?= main
 
 # AWSリージョンをParameter Storeから取得（キャッシュ）
 AWS_REGION ?= $(shell aws ssm get-parameter --name /pulumi/backend/region --query "Parameter.Value" --output text --region ap-northeast-1 2>/dev/null || echo "ap-northeast-1")
@@ -11,9 +11,9 @@ export AWS_REGION
 export AWS_DEFAULT_REGION := $(AWS_REGION)
 
 help:
-	@echo "Pulumiインフラ管理"
+	@echo "Pulumi IAMインフラ管理"
 	@echo ""
-	@echo "使い方: make <ターゲット> DIR=<iam|ec2> [STACK=<スタック名>]"
+	@echo "使い方: make <ターゲット> [STACK=<スタック名>]"
 	@echo ""
 	@echo "ターゲット:"
 	@echo "  install     - 依存関係をインストール (npm install)"
@@ -31,65 +31,49 @@ help:
 	@echo "  clean       - ローカルキャッシュをクリーンアップ"
 	@echo ""
 	@echo "パラメータ:"
-	@echo "  DIR=<iam|ec2>         # 対象ディレクトリ（必須）"
-	@echo "  STACK=<スタック名>    # スタック名（デフォルト: dev）"
+	@echo "  STACK=<スタック名>    # スタック名（デフォルト: main）"
 	@echo ""
 	@echo "例:"
-	@echo "  make install DIR=iam            # IAMの依存関係をインストール"
-	@echo "  make preview DIR=iam            # IAMリソースをプレビュー (devスタック)"
-	@echo "  make up DIR=ec2 STACK=prod      # EC2リソースをデプロイ (prodスタック)"
-	@echo "  make stack-init DIR=iam         # 新しいIAMスタックを作成"
-	@echo "  make stack-rm DIR=ec2 STACK=old # 古いEC2スタックを削除"
+	@echo "  make install              # 依存関係をインストール"
+	@echo "  make preview              # リソースをプレビュー (mainスタック)"
+	@echo "  make up                   # リソースをデプロイ (mainスタック)"
+	@echo "  make stack-init STACK=dev # 新しいスタックを作成"
 	@echo ""
 
 .PHONY: install login stack-list stack-info stack-init stack-rm preview up refresh destroy output config clean
 
-# DIRパラメータの検証
-check-dir:
-	@if [ -z "$(DIR)" ]; then \
-		echo "エラー: DIRパラメータが必要です"; \
-		echo ""; \
-		echo "使い方: make <ターゲット> DIR=<iam|ec2>"; \
-		echo ""; \
-		echo "例:"; \
-		echo "  make install DIR=iam"; \
-		echo "  make preview DIR=ec2"; \
-		echo ""; \
-		exit 1; \
-	fi
-
-install: check-dir
+install:
 	@echo "=================================================="
-	@echo "  依存関係をインストール中 ($(DIR))"
+	@echo "  依存関係をインストール中 (IAM)"
 	@echo "=================================================="
 	@echo ""
-	@cd $(DIR) && npm install
+	@npm install
 	@echo ""
-	@echo "✓ $(DIR) の依存関係をインストールしました"
+	@echo "✓ 依存関係をインストールしました"
 	@echo ""
 
-login: check-dir
-	@cd $(DIR) && bash ../login-to-backend.sh
+login:
+	@bash ./login-to-backend.sh
 
-stack-list: check-dir
+stack-list:
 	@echo "=================================================="
-	@echo "  利用可能なPulumiスタック ($(DIR))"
+	@echo "  利用可能なPulumiスタック (IAM)"
 	@echo "=================================================="
 	@echo ""
 	@export PULUMI_CONFIG_PASSPHRASE=""; \
-	cd $(DIR) && pulumi stack ls
+	pulumi stack ls
 
-stack-info: check-dir
+stack-info:
 	@echo "=================================================="
-	@echo "  スタック詳細: $(STACK) ($(DIR))"
+	@echo "  スタック詳細: $(STACK) (IAM)"
 	@echo "=================================================="
 	@echo ""
 	@export PULUMI_CONFIG_PASSPHRASE=""; \
-	cd $(DIR) && pulumi stack --stack $(STACK) --show-ids --show-urns
+	pulumi stack --stack $(STACK) --show-ids --show-urns
 
-stack-init: check-dir
+stack-init:
 	@echo "=================================================="
-	@echo "  新しいスタックを作成: $(STACK) ($(DIR))"
+	@echo "  新しいスタックを作成: $(STACK) (IAM)"
 	@echo "=================================================="
 	@echo ""
 	@echo "パスフレーズ設定:"
@@ -102,28 +86,28 @@ stack-init: check-dir
 		echo ""; \
 		echo "パスフレーズなしでスタックを作成中..."; \
 		export PULUMI_CONFIG_PASSPHRASE=""; \
-		cd $(DIR) && pulumi stack init $(STACK); \
+		pulumi stack init $(STACK); \
 	elif [ "$$choice" = "2" ]; then \
 		echo ""; \
 		echo "パスフレーズを入力してください（今後の操作に必要になります）:"; \
-		cd $(DIR) && pulumi stack init $(STACK); \
+		pulumi stack init $(STACK); \
 	else \
 		echo ""; \
 		echo "無効な選択です。キャンセルしました。"; \
 		exit 1; \
 	fi
 	@echo ""
-	@echo "✓ $(DIR) にスタック '$(STACK)' を作成しました"
+	@echo "✓ スタック '$(STACK)' を作成しました"
 	@echo ""
 	@echo "次のステップ:"
 	@echo "  1. Pulumi.$(STACK).yaml を編集して設定を追加"
-	@echo "  2. make preview DIR=$(DIR) STACK=$(STACK)"
-	@echo "  3. make up DIR=$(DIR) STACK=$(STACK)"
+	@echo "  2. make preview STACK=$(STACK)"
+	@echo "  3. make up STACK=$(STACK)"
 	@echo ""
 
-stack-rm: check-dir
+stack-rm:
 	@echo "=================================================="
-	@echo "  スタックを削除: $(STACK) ($(DIR))"
+	@echo "  スタックを削除: $(STACK) (IAM)"
 	@echo "=================================================="
 	@echo ""
 	@echo "警告: この操作は以下を実行します:"
@@ -135,12 +119,12 @@ stack-rm: check-dir
 		echo ""; \
 		echo "ステップ1: リソースを削除中..."; \
 		export PULUMI_CONFIG_PASSPHRASE=""; \
-		cd $(DIR) && pulumi destroy --stack $(STACK) --yes || true; \
+		pulumi destroy --stack $(STACK) --yes || true; \
 		echo ""; \
 		echo "ステップ2: スタックを削除中..."; \
-		cd $(DIR) && pulumi stack rm $(STACK) --yes; \
+		pulumi stack rm $(STACK) --yes; \
 		echo ""; \
-		echo "✓ $(DIR) からスタック '$(STACK)' を削除しました"; \
+		echo "✓ スタック '$(STACK)' を削除しました"; \
 		echo ""; \
 		echo "注意: Pulumi.$(STACK).yaml が残っている場合は手動で削除してください。"; \
 	else \
@@ -148,64 +132,63 @@ stack-rm: check-dir
 		echo "キャンセルしました。"; \
 	fi
 
-preview: login check-dir
+preview: login
 	@echo "=================================================="
-	@echo "  変更をプレビュー ($(DIR)/$(STACK))"
-	@echo "=================================================="
-	@echo ""
-	@export PULUMI_CONFIG_PASSPHRASE=""; \
-	cd $(DIR) && pulumi preview --stack $(STACK)
-
-up: login check-dir
-	@echo "=================================================="
-	@echo "  インフラをデプロイ ($(DIR)/$(STACK))"
+	@echo "  変更をプレビュー (IAM/$(STACK))"
 	@echo "=================================================="
 	@echo ""
 	@export PULUMI_CONFIG_PASSPHRASE=""; \
-	cd $(DIR) && pulumi up --stack $(STACK) --yes
+	pulumi preview --stack $(STACK)
 
-refresh: login check-dir
+up: login
 	@echo "=================================================="
-	@echo "  リソース状態を同期 ($(DIR)/$(STACK))"
+	@echo "  インフラをデプロイ (IAM/$(STACK))"
 	@echo "=================================================="
 	@echo ""
 	@export PULUMI_CONFIG_PASSPHRASE=""; \
-	cd $(DIR) && pulumi refresh --stack $(STACK) --yes
+	pulumi up --stack $(STACK) --yes
 
-destroy: login check-dir
+refresh: login
 	@echo "=================================================="
-	@echo "  リソースを削除 ($(DIR)/$(STACK))"
+	@echo "  リソース状態を同期 (IAM/$(STACK))"
 	@echo "=================================================="
 	@echo ""
 	@export PULUMI_CONFIG_PASSPHRASE=""; \
-	cd $(DIR) && pulumi destroy --stack $(STACK)
+	pulumi refresh --stack $(STACK) --yes
 
-output: login check-dir
+destroy: login
 	@echo "=================================================="
-	@echo "  スタック出力 ($(DIR)/$(STACK))"
+	@echo "  リソースを削除 (IAM/$(STACK))"
 	@echo "=================================================="
 	@echo ""
 	@export PULUMI_CONFIG_PASSPHRASE=""; \
-	cd $(DIR) && (pulumi stack output --stack $(STACK) --json | jq -r 'to_entries[] | "\(.key): \(.value)"' || pulumi stack output --stack $(STACK))
+	pulumi destroy --stack $(STACK)
 
-config: check-dir
+output: login
 	@echo "=================================================="
-	@echo "  スタック設定 ($(DIR)/$(STACK))"
+	@echo "  スタック出力 (IAM/$(STACK))"
+	@echo "=================================================="
+	@echo ""
+	@export PULUMI_CONFIG_PASSPHRASE=""; \
+	(pulumi stack output --stack $(STACK) --json | jq -r 'to_entries[] | "\(.key): \(.value)"' || pulumi stack output --stack $(STACK))
+
+config:
+	@echo "=================================================="
+	@echo "  スタック設定 (IAM/$(STACK))"
 	@echo "=================================================="
 	@echo ""
 	@echo "スタック: $(STACK)"
-	@echo "ディレクトリ: $(DIR)"
 	@echo ""
 	@export PULUMI_CONFIG_PASSPHRASE=""; \
-	cd $(DIR) && pulumi config --stack $(STACK)
+	pulumi config --stack $(STACK)
 
-clean: check-dir
+clean:
 	@echo "=================================================="
-	@echo "  ローカルキャッシュをクリーンアップ ($(DIR))"
+	@echo "  ローカルキャッシュをクリーンアップ (IAM)"
 	@echo "=================================================="
 	@echo ""
-	@cd $(DIR) && rm -rf node_modules .pulumi
-	@echo "✓ $(DIR) のキャッシュをクリーンアップしました"
+	@rm -rf node_modules .pulumi
+	@echo "✓ キャッシュをクリーンアップしました"
 	@echo ""
-	@echo "次回使用前に $(DIR) で 'npm install' を実行してください。"
+	@echo "次回使用前に 'make install' を実行してください。"
 	@echo ""
