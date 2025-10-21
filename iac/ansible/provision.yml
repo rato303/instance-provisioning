@@ -10,3 +10,4 @@
     - pulumi
     - nvm
     - sdkman
+    - git-switch-user

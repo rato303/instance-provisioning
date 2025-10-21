@@ -1,0 +1,29 @@
+---
+- name: Ensure /home/ubuntu/bin directory exists
+  file:
+    path: /home/ubuntu/bin
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0755'
+
+- name: Copy git-switch-user script
+  copy:
+    src: git-switch-user
+    dest: /home/ubuntu/bin/git-switch-user
+    owner: ubuntu
+    group: ubuntu
+    mode: '0755'
+
+- name: Verify git-switch-user installation
+  command: /home/ubuntu/bin/git-switch-user
+  register: git_switch_user_check
+  failed_when: false
+  changed_when: false
+  become: yes
+  become_user: ubuntu
+
+- name: Display git-switch-user help
+  debug:
+    msg: "git-switch-user is installed and executable"
+  when: git_switch_user_check.rc == 1

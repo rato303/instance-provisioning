@@ -1,0 +1,183 @@
+#!/bin/bash
+
+set -e
+
+# GitHub トークン管理スクリプト
+# AWS Secrets Manager から GitHub トークンを取得して Git の設定を更新
+
+# 設定
+SECRET_PREFIX="github/tokens"
+AWS_REGION="ap-northeast-1"
+DEFAULT_CACHE_TIMEOUT="28800"  # デフォルト値
+
+# 使用方法表示
+usage() {
+    echo "使用方法: git-switch-user <github-id> [--timeout <seconds>]"
+    echo ""
+    echo "引数:"
+    echo "  <github-id>              GitHub ID（Secrets Manager の識別子）"
+    echo "  --timeout <seconds>      クレデンシャルキャッシュの有効期限（秒）"
+    echo "                           デフォルト: ${DEFAULT_CACHE_TIMEOUT}秒 ($(echo "${DEFAULT_CACHE_TIMEOUT} / 3600" | bc)時間)"
+    echo ""
+    echo "例:"
+    echo "  git-switch-user personal"
+    echo "  git-switch-user work --timeout 3600"
+    echo "  git-switch-user personal --timeout 60    # テスト用（60秒）"
+    echo ""
+    echo "GitHub ID は Secrets Manager に登録されている識別子です"
+    echo "シークレット名: ${SECRET_PREFIX}/<github-id>"
+    exit 1
+}
+
+# 引数解析
+GITHUB_ID=""
+CACHE_TIMEOUT="${DEFAULT_CACHE_TIMEOUT}"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --timeout)
+            if [ -z "$2" ] || ! [[ "$2" =~ ^[0-9]+$ ]]; then
+                echo "✗ エラー: --timeout には正の整数を指定してください"
+                echo ""
+                usage
+            fi
+            CACHE_TIMEOUT="$2"
+            shift 2
+            ;;
+        -*)
+            echo "✗ エラー: 不明なオプション: $1"
+            echo ""
+            usage
+            ;;
+        *)
+            if [ -z "${GITHUB_ID}" ]; then
+                GITHUB_ID="$1"
+                shift
+            else
+                echo "✗ エラー: GitHub ID は1つだけ指定してください"
+                echo ""
+                usage
+            fi
+            ;;
+    esac
+done
+
+# GitHub ID が指定されているか確認
+if [ -z "${GITHUB_ID}" ]; then
+    usage
+fi
+
+SECRET_NAME="${SECRET_PREFIX}/${GITHUB_ID}"
+
+echo "=================================================="
+echo "  GitHub ユーザー切り替え"
+echo "=================================================="
+echo ""
+echo "GitHub ID: ${GITHUB_ID}"
+echo "シークレット名: ${SECRET_NAME}"
+echo ""
+
+# AWS CLI の確認
+if ! command -v aws &> /dev/null; then
+    echo "✗ エラー: AWS CLI が見つかりません"
+    echo ""
+    echo "AWS CLI をインストールしてください"
+    exit 1
+fi
+
+# jq の確認
+if ! command -v jq &> /dev/null; then
+    echo "✗ エラー: jq コマンドが見つかりません"
+    echo ""
+    echo "jq をインストールしてください"
+    exit 1
+fi
+
+# Secrets Manager からシークレットを取得
+echo "Secrets Manager からトークン情報を取得中..."
+set +e
+SECRET_JSON=$(aws secretsmanager get-secret-value \
+    --secret-id "${SECRET_NAME}" \
+    --region "${AWS_REGION}" \
+    --query SecretString \
+    --output text 2>&1)
+RESULT=$?
+set -e
+
+if [ ${RESULT} -ne 0 ]; then
+    echo ""
+    echo "✗ エラー: Secrets Manager からシークレットを取得できませんでした"
+    echo ""
+    echo "${SECRET_JSON}"
+    echo ""
+    echo "考えられる原因:"
+    echo "  1. シークレット '${SECRET_NAME}' が存在しない"
+    echo "  2. IAM 権限が不足している"
+    echo "  3. ネットワークエラー"
+    echo ""
+    echo "シークレット一覧を確認するには:"
+    echo "  aws secretsmanager list-secrets --region ${AWS_REGION} | grep ${SECRET_PREFIX}"
+    exit 1
+fi
+
+# JSON をパース
+NAME=$(echo "${SECRET_JSON}" | jq -r '.name // empty' 2>/dev/null)
+EMAIL=$(echo "${SECRET_JSON}" | jq -r '.email // empty' 2>/dev/null)
+TOKEN=$(echo "${SECRET_JSON}" | jq -r '.token // empty' 2>/dev/null)
+
+# 必須フィールドの確認
+if [ -z "${NAME}" ] || [ -z "${EMAIL}" ] || [ -z "${TOKEN}" ]; then
+    echo ""
+    echo "✗ エラー: シークレットの JSON 構造が不正です"
+    echo ""
+    echo "必須フィールド: name, email, token"
+    echo ""
+    echo "現在の値:"
+    echo "  name:  ${NAME:-<空>}"
+    echo "  email: ${EMAIL:-<空>}"
+    echo "  token: ${TOKEN:+<設定済み>}${TOKEN:-<空>}"
+    exit 1
+fi
+
+echo "✓ トークン情報を取得しました"
+echo ""
+
+# Git グローバル設定を更新
+echo "Git ユーザー設定を更新中..."
+git config --global user.name "${NAME}"
+git config --global user.email "${EMAIL}"
+git config --global credential.helper "cache --timeout=${CACHE_TIMEOUT}"
+
+echo "✓ Git ユーザー設定を更新しました"
+echo ""
+
+# Git credential cache にトークンを登録
+echo "クレデンシャルキャッシュにトークンを登録中..."
+set +e
+printf "protocol=https\nhost=github.com\nusername=%s\npassword=%s\n" "${NAME}" "${TOKEN}" | \
+    git credential-cache store
+CACHE_RESULT=$?
+set -e
+
+if [ ${CACHE_RESULT} -eq 0 ]; then
+    echo "✓ クレデンシャルキャッシュに登録しました"
+else
+    echo "✗ 警告: クレデンシャルキャッシュへの登録に失敗しました"
+    echo "  Git 操作時に認証が求められる可能性があります"
+fi
+
+echo ""
+echo "=================================================="
+echo "  設定完了"
+echo "=================================================="
+echo ""
+echo "現在の Git ユーザー設定:"
+echo "  名前:   ${NAME}"
+echo "  Email:  ${EMAIL}"
+echo "  キャッシュ有効期限: ${CACHE_TIMEOUT}秒 ($(echo "${CACHE_TIMEOUT} / 3600" | bc)時間)"
+echo ""
+echo "この設定で GitHub へのアクセスが可能になりました"
+echo "  git clone https://github.com/yourorg/private-repo.git"
+echo "  git pull"
+echo "  git push"
+echo ""
