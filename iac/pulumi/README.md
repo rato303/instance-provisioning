@@ -6,11 +6,21 @@
 
 ```
 iac/pulumi/
-├── Makefile                # 共通Makefile（IAM/EC2両方で使用）
-├── login-to-backend.sh     # Pulumiバックエンドログインスクリプト
-├── iam/                    # IAMロールとポリシー
-└── ec2/                    # EC2インスタンス
+├── README.md               # このファイル
+├── tools/                  # 共通ツール
+├── iam/                    # 独立したIAMプロジェクト
+│   ├── Makefile
+│   ├── package.json
+│   ├── Pulumi.yaml
+│   └── ...
+└── ec2/                    # 独立したEC2プロジェクト
+    ├── Makefile
+    ├── package.json
+    ├── Pulumi.yaml
+    └── ...
 ```
+
+**重要**: EC2とIAMはそれぞれ完全に独立したPulumiプロジェクトです。各プロジェクトディレクトリ内で操作を行います。
 
 ## ⚠️ 重要: スタック命名規則
 
@@ -25,11 +35,13 @@ iac/pulumi/
 
 ```bash
 # IAMリソースのデプロイ（スタック名: main）
-make up DIR=iam STACK=main
+cd iac/pulumi/iam
+make up
 
 # EC2インスタンスのデプロイ（スタック名: dev, prod等）
-make up DIR=ec2 STACK=dev
-make up DIR=ec2 STACK=prod
+cd iac/pulumi/ec2
+make up STACK=dev
+make up STACK=prod
 ```
 
 ## 前提条件
@@ -142,26 +154,40 @@ make setup
 
 ### 2. 依存パッケージのインストール
 
+各プロジェクトで個別にインストールします：
+
 ```bash
-npm install
+# IAMプロジェクト
+cd iac/pulumi/iam
+make install
+
+# EC2プロジェクト
+cd iac/pulumi/ec2
+make install
 ```
 
 ### 3. Pulumiスタックの設定
 
-スタック設定ファイルをコピーして編集:
+各プロジェクトでスタック設定ファイルをコピーして編集:
 
 ```bash
+# EC2プロジェクト
+cd iac/pulumi/ec2
 cp Pulumi.dev.yaml.example Pulumi.dev.yaml
-```
+# Pulumi.dev.yaml を編集して、実際のVPC ID、Subnet ID、Security Group IDなどを設定
 
-`Pulumi.dev.yaml` を編集して、実際のVPC ID、Subnet ID、Security Group IDなどを設定してください。
+# IAMプロジェクト
+cd iac/pulumi/iam
+cp Pulumi.main.yaml.example Pulumi.main.yaml
+# Pulumi.main.yaml を編集（必要に応じて）
+```
 
 ## 使い方
 
 ### EC2インスタンスの管理
 
 ```bash
-cd ec2
+cd iac/pulumi/ec2
 
 # ヘルプを表示
 make help
@@ -187,6 +213,8 @@ make destroy
 ### スタックの切り替え
 
 ```bash
+cd iac/pulumi/ec2
+
 # 本番環境にデプロイ
 make up STACK=prod
 
@@ -194,23 +222,49 @@ make up STACK=prod
 make destroy STACK=staging
 ```
 
-## ディレクトリ構成
+### IAMリソースの管理
+
+```bash
+cd iac/pulumi/iam
+
+# IAMリソースをデプロイ（デフォルトスタック: main）
+make up
+
+# IAMリソースの変更をプレビュー
+make preview
+
+# デプロイ済みリソース情報を表示
+make output
+```
+
+## 詳細なディレクトリ構成
 
 ```
 iac/pulumi/
 ├── README.md                    # このファイル
-├── Pulumi.yaml                  # Pulumiプロジェクト設定
-├── Pulumi.dev.yaml             # dev環境の設定
-├── Pulumi.dev.yaml.example     # 設定ファイルのサンプル
-├── package.json                # Node.js依存関係
-├── tsconfig.json               # TypeScript設定
-├── ec2/                        # EC2インスタンス管理
-│   ├── Makefile               # EC2管理用Makefile
-│   ├── login-to-backend.sh    # Pulumiログイン処理
-│   └── index.ts               # EC2リソース定義
-└── tools/                      # ツール群
+├── ec2/                         # EC2プロジェクト（独立）
+│   ├── Makefile                # EC2管理用Makefile
+│   ├── package.json            # EC2専用の依存関係
+│   ├── tsconfig.json           # EC2専用TypeScript設定
+│   ├── Pulumi.yaml             # EC2プロジェクト定義
+│   ├── Pulumi.dev.yaml.example # スタック設定例
+│   ├── login-to-backend.sh     # バックエンドログインスクリプト
+│   ├── index.ts                # EC2リソース定義
+│   └── IAM_PERMISSIONS.md      # 必要なIAM権限ドキュメント
+├── iam/                         # IAMプロジェクト（独立）
+│   ├── Makefile                # IAM管理用Makefile
+│   ├── package.json            # IAM専用の依存関係
+│   ├── tsconfig.json           # IAM専用TypeScript設定
+│   ├── Pulumi.yaml             # IAMプロジェクト定義
+│   ├── Pulumi.main.yaml.example # スタック設定例
+│   ├── login-to-backend.sh     # バックエンドログインスクリプト
+│   ├── README.md               # IAMリソース詳細ドキュメント
+│   ├── index.ts                # IAMリソース定義
+│   ├── policies/               # IAMポリシー定義
+│   └── roles/                  # IAMロール定義
+└── tools/                       # 共通ツール群
     └── maintenance/
-        └── pulumi-backend/    # Pulumiバックエンド設定管理
+        └── pulumi-backend/     # Pulumiバックエンド設定管理
             ├── Makefile
             ├── README.md
             └── setup-backend-config.sh
